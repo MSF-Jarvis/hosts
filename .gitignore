@@ -8,3 +8,5 @@ hosts-*
 /web.config
 /__pycache__
 /node_modules
+hosts_msf
+venv
