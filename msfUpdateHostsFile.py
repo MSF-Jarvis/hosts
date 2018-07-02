@@ -81,7 +81,7 @@ def get_defaults():
         "exclusionpattern": "([a-zA-Z\d-]+\.){0,}",
         "exclusionregexs": [],
         "exclusions": [],
-        "commonexclusions": ["hulu.com"],
+        "commonexclusions": [],
         "blacklistfile": path_join_robust(BASEDIR_PATH, "blacklist"),
         "whitelistfile": path_join_robust(BASEDIR_PATH, "whitelist")}
 # End Project Settings
@@ -105,7 +105,7 @@ def main():
     parser.add_argument("--keepdomaincomments", "-k",
                         dest="keepdomaincomments", default=False,
                         help="Keep domain line comments.")
-    parser.add_argument("--noupdate", "-n", dest="noupdate", default=False,
+    parser.add_argument("--noupdate", "-n", dest="noupdate", default=True,
                         action="store_true", help="Don't update from "
                                                   "host data sources.")
     parser.add_argument("--skipstatichosts", "-s", dest="skipstatichosts",
@@ -123,7 +123,7 @@ def main():
                         help="Attempt to flush DNS cache "
                              "after replacing the hosts file.")
     parser.add_argument("--compress", "-c", dest="compress",
-                        default=False, action="store_true",
+                        default=True, action="store_true",
                         help="Compress the hosts file "
                              "ignoring non-necessary lines "
                              "(empty lines and comments) and "
@@ -131,7 +131,7 @@ def main():
                              "each line. Improve the "
                              "performances under Windows.")
     parser.add_argument("--minimise", "-m", dest="minimise",
-                        default=False, action="store_true",
+                        default=True, action="store_true",
                         help="Minimise the hosts file "
                              "ignoring non-necessary lines "
                              "(empty lines and comments).")
@@ -188,12 +188,12 @@ def main():
     remove_old_hosts_file(settings["backup"])
     if settings["compress"]:
         # Another mode is required to read and write the file in Python 3
-        final_file = open(path_join_robust(settings["outputpath"], "hosts"), "w+b" if PY3 else "w+")
+        final_file = open(path_join_robust(settings["outputpath"], "hosts_msf"), "w+b" if PY3 else "w+")
         compressed_file = tempfile.NamedTemporaryFile()
         remove_dups_and_excl(merge_file, exclusion_regexes, compressed_file)
         compress_file(compressed_file, settings["targetip"], final_file)
     elif settings["minimise"]:
-        final_file = open(path_join_robust(settings["outputpath"], "hosts"), "w+b" if PY3 else "w+")
+        final_file = open(path_join_robust(settings["outputpath"], "hosts_msf"), "w+b" if PY3 else "w+")
         minimised_file = tempfile.NamedTemporaryFile()
         remove_dups_and_excl(merge_file, exclusion_regexes, minimised_file)
         minimise_file(minimised_file, settings["targetip"], final_file)
@@ -210,11 +210,11 @@ def main():
                          skipstatichosts=skip_static_hosts)
     final_file.close()
 
-    update_readme_data(settings["readmedatafilename"],
-                       extensions=extensions,
-                       numberofrules=number_of_rules,
-                       outputsubfolder=output_subfolder,
-                       sourcesdata=sources_data)
+#    update_readme_data(settings["readmedatafilename"],
+#                       extensions=extensions,
+#                       numberofrules=number_of_rules,
+#                       outputsubfolder=output_subfolder,
+#                       sourcesdata=sources_data)
 
     print_success("Success! The hosts file has been saved in folder " +
                   output_subfolder + "\nIt contains " +
@@ -255,7 +255,7 @@ def prompt_for_update(freshen, update_auto):
     """
 
     # Create a hosts file if it doesn't exist.
-    hosts_file = path_join_robust(BASEDIR_PATH, "hosts")
+    hosts_file = path_join_robust(BASEDIR_PATH, "hosts_msf")
 
     if not os.path.isfile(hosts_file):
         try:
@@ -267,7 +267,7 @@ def prompt_for_update(freshen, update_auto):
             print_failure("ERROR: No 'hosts' file in the folder. Try creating one manually.")
 
     if not freshen:
-        return
+        return False
 
     prompt = "Do you want to update all data sources?"
 
@@ -295,6 +295,8 @@ def prompt_for_exclusions(skip_prompt):
         Whether or not we should proceed to prompt the user to exclude any
         custom domains beyond those in the whitelist.
     """
+
+    return False
 
     prompt = ("Do you want to exclude any domains?\n"
               "For example, hulu.com video streaming must be able to access "
@@ -351,6 +353,8 @@ def prompt_for_move(final_file, **move_params):
     move_file : bool
         Whether or not the final hosts file was moved.
     """
+
+    return False
 
     skip_static_hosts = move_params["skipstatichosts"]
 
@@ -756,7 +760,7 @@ def remove_dups_and_excl(merge_file, exclusion_regexes, output_file=None):
 
     if output_file is None:
         # Another mode is required to read and write the file in Python 3
-        final_file = open(path_join_robust(settings["outputpath"], "hosts"), "w+b" if PY3 else "w+")
+        final_file = open(path_join_robust(settings["outputpath"], "hosts_msf"), "w+b" if PY3 else "w+")
     else:
         final_file = output_file
 
@@ -1124,7 +1128,7 @@ def remove_old_hosts_file(backup):
         Whether or not to backup the existing hosts file.
     """
 
-    old_file_path = path_join_robust(BASEDIR_PATH, "hosts")
+    old_file_path = path_join_robust(BASEDIR_PATH, "hosts_msf")
 
     # Create if already removed, so remove won't raise an error.
     open(old_file_path, "a").close()
