@@ -56,7 +56,7 @@ def get_defaults():
     return {
         "numberofrules": 0,
         "datapath": path_join_robust(BASEDIR_PATH, "data"),
-        "freshen": True,
+        "freshen": False,
         "replace": False,
         "backup": False,
         "skipstatichosts": False,
@@ -77,7 +77,7 @@ def get_defaults():
         "exclusionpattern": r"([a-zA-Z\d-]+\.){0,}",
         "exclusionregexs": [],
         "exclusions": [],
-        "commonexclusions": ["hulu.com"],
+        "commonexclusions": [],
         "blacklistfile": path_join_robust(BASEDIR_PATH, "blacklist"),
         "whitelistfile": path_join_robust(BASEDIR_PATH, "whitelist"),
     }
@@ -112,7 +112,7 @@ def main():
         "--extensions",
         "-e",
         dest="extensions",
-        default=[],
+        default=["fakenews", "gambling"],
         nargs="*",
         help="Host extensions to include " "in the final hosts file.",
     )
@@ -227,7 +227,7 @@ def main():
     if update_sources:
         update_all_sources(source_data_filename, settings["hostfilename"])
 
-    gather_exclusions = prompt_for_exclusions(skip_prompt=auto)
+    gather_exclusions = False
 
     if gather_exclusions:
         common_exclusions = settings["commonexclusions"]
@@ -250,12 +250,12 @@ def main():
     merge_file = create_initial_file()
     remove_old_hosts_file(settings["backup"])
     if settings["compress"]:
-        final_file = open(path_join_robust(settings["outputpath"], "hosts"), "w+b")
+        final_file = open(path_join_robust(settings["outputpath"], "hosts_msf"), "w+b")
         compressed_file = tempfile.NamedTemporaryFile()
         remove_dups_and_excl(merge_file, exclusion_regexes, compressed_file)
         compress_file(compressed_file, settings["targetip"], final_file)
     elif settings["minimise"]:
-        final_file = open(path_join_robust(settings["outputpath"], "hosts"), "w+b")
+        final_file = open(path_join_robust(settings["outputpath"], "hosts_msf"), "w+b")
         minimised_file = tempfile.NamedTemporaryFile()
         remove_dups_and_excl(merge_file, exclusion_regexes, minimised_file)
         minimise_file(minimised_file, settings["targetip"], final_file)
@@ -291,12 +291,7 @@ def main():
         + " unique entries."
     )
 
-    move_file = prompt_for_move(
-        final_file,
-        auto=auto,
-        replace=settings["replace"],
-        skipstatichosts=skip_static_hosts,
-    )
+    move_file = False
 
     # We only flush the DNS cache if we have
     # moved a new hosts file into place.
@@ -329,7 +324,7 @@ def prompt_for_update(freshen, update_auto):
     """
 
     # Create a hosts file if it doesn't exist.
-    hosts_file = path_join_robust(BASEDIR_PATH, "hosts")
+    hosts_file = path_join_robust(BASEDIR_PATH, "hosts_msf")
 
     if not os.path.isfile(hosts_file):
         try:
@@ -699,7 +694,8 @@ def update_all_sources(source_data_filename, host_filename):
             )
             write_data(hosts_file, updated_file)
             hosts_file.close()
-        except Exception:
+        except Exception as e:
+            print(e)
             print("Error in updating source: ", update_url)
 
 
@@ -846,7 +842,7 @@ def remove_dups_and_excl(merge_file, exclusion_regexes, output_file=None):
         os.makedirs(settings["outputpath"])
 
     if output_file is None:
-        final_file = open(path_join_robust(settings["outputpath"], "hosts"), "w+b")
+        final_file = open(path_join_robust(settings["outputpath"], "hosts_msf"), "w+b")
     else:
         final_file = output_file
 
@@ -1137,6 +1133,8 @@ def update_readme_data(readme_file, **readme_updates):
         4) outputsubfolder
     """
 
+    return
+
     extensions_key = "base"
     extensions = readme_updates["extensions"]
 
@@ -1285,7 +1283,7 @@ def remove_old_hosts_file(backup):
         Whether or not to backup the existing hosts file.
     """
 
-    old_file_path = path_join_robust(BASEDIR_PATH, "hosts")
+    old_file_path = path_join_robust(BASEDIR_PATH, "hosts_msf")
 
     # Create if already removed, so remove won't raise an error.
     open(old_file_path, "a").close()
